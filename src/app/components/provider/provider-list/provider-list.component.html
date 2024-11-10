@@ -1,0 +1,199 @@
+<app-main-container title="Lista de Proveedores" (infoButtonClick)="showInfo()">
+
+  <!-- Header con búsqueda, filtros y botones de acción -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- Sección de búsqueda y filtros -->
+    <div class="input-group w-25">
+      <span class="input-group-text">
+        <i class="bi bi-search"></i>
+      </span>
+      <input type="text" class="form-control" placeholder="Buscar..." [formControl]="searchFilterAll" />
+      <button type="button" class="btn btn-outline-info" (click)="openModalFilter()">
+        <i class="bi bi-funnel-fill"></i>
+      </button>
+    </div>
+    <!-- Botón para abrir el modal -->
+
+
+    <!-- Botones de Agregar, Exportar a Excel y Exportar a PDF -->
+    <div class="d-flex align-items-center">
+
+      <button type="button" class="btn btn-outline-primary me-2" [routerLink]="['/providers/form']">
+        <i class="bi bi-plus"></i>
+      </button>
+      <button type="button" class="btn btn-success me-2" (click)="exportToExcel()">
+        <i class="bi bi-file-earmark-excel"></i>
+      </button>
+      <button type="button" class="btn btn-danger" (click)="exportToPDF()">
+        <i class="bi bi-file-earmark-pdf"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de proveedores -->
+  <div class="table-container mt-3">
+    <table class="table table-striped">
+      <thead *ngIf="providerList.length > 0">
+        <tr>
+          <th>Nombre</th>
+          <th>CUIL</th>
+          <th>Servicio</th>
+          <th>Contacto</th>
+          <th>Dirección</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="providerList.length === 0">
+          <td colspan="7" class="text-center">
+            <div class="alert alert-secondary">
+              No hay elementos para mostrar
+            </div>
+          </td>
+        </tr>
+        <tr *ngFor="let provider of providerList; trackBy: trackByFn">
+          <td>{{ provider.name }}</td>
+          <td>{{ provider.cuil }}</td>
+          <td>{{ provider.service }}</td>
+          <td>{{ provider.contact }}</td>
+          <td>{{ provider.address }}</td>
+          <td>
+            <i *ngIf="provider.enabled" class="bi bi-check2-circle text-success" style="font-size: 1.5rem;"></i>
+            <i *ngIf="!provider.enabled" class="bi bi-x-circle text-danger" style="font-size: 1.5rem;"></i>
+          </td>
+          <td>
+            <div class="d-flex justify-content-left gap-2">
+              <!-- Botón de Editar -->
+              <button *ngIf="provider.enabled != false" (click)="editProvider(provider.id)"
+                class="btn btn-warning btn-sm" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </button>
+
+              <!-- Botón de Editar (Deshabilitado) -->
+              <button *ngIf="provider.enabled == false" disabled class="btn btn-warning btn-sm" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </button>
+
+              <!-- Botón de Eliminar -->
+              <button *ngIf="provider.enabled != false" (click)="deleteProvider(provider.id)"
+                class="btn btn-danger btn-sm" title="Eliminar">
+                <i class="bi bi-trash-fill"></i>
+              </button>
+
+              <!-- Botón de Eliminar (Deshabilitado) -->
+              <button *ngIf="provider.enabled == false" disabled class="btn btn-danger btn-sm" title="Eliminar">
+                <i class="bi bi-trash-fill"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex justify-content-between align-items-center p-3 border-top">
+    <!-- Left side - Items per page dropdown -->
+    <div class="d-flex align-items-center">
+      <select (change)="onItemsPerPageChange()" class="form-select form-select-sm" style="width: auto;"
+        [(ngModel)]="pageSize">
+        <option value="5">5 Elementos</option>
+        <option value="10">10 Elementos</option>
+        <option value="20">20 Elementos</option>
+        <option value="50">50 Elementos</option>
+      </select>
+    </div>
+
+
+
+    <!-- Navigation buttons -->
+    <div class="ms-3">
+      <button class="btn btn-outline-secondary btn-sm me-1" [disabled]="currentPage === 1" (click)="goToPreviousPage()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-left"
+          viewBox="0 0 16 16">
+          <path fill-rule="evenodd"
+            d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z" />
+        </svg>
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" [disabled]="currentPage === totalPages" (click)="goToNextPage()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right"
+          viewBox="0 0 16 16">
+          <path fill-rule="evenodd"
+            d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+
+
+  <!-- Modal de Filtros -->
+  <div *ngIf="showModalFilter" class="modal fade show" tabindex="-1" role="dialog" style="display: block;">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Filtrar Proveedores</h5>
+          <button type="button" class="btn-close" aria-label="Close" (click)="closeModalFilter()"></button>
+        </div>
+        <div class="modal-body">
+          <form [formGroup]="filterForm">
+            <div class="form-group">
+              <label>Nombre</label>
+              <input type="text" class="form-control" placeholder="Nombre" formControlName="name">
+            </div>
+            <div class="form-group">
+              <label>CUIL</label>
+              <input type="text" class="form-control" placeholder="CUIL" formControlName="cuil">
+            </div>
+            <div class="form-group">
+              <label>Servicio</label>
+              <input type="text" class="form-control" placeholder="Servicio" formControlName="service">
+            </div>
+            <div class="form-group">
+              <label>Número de Teléfono</label>
+              <input type="text" class="form-control" placeholder="Número de Teléfono" formControlName="phone">
+            </div>
+            <div class="form-group">
+              <label>Estado</label>
+              <select class="form-select" formControlName="enabled">
+                <option value="">Todos los Estados</option>
+                <option [value]="true">Activo</option>
+                <option [value]="false">Inactivo</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-danger" (click)="clearFilters()">
+            <i class="bi bi-trash"></i></button>
+          <button type="button" class="btn btn-primary" (click)="applyFilters()">Aplicar Filtros</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Métricas -->
+  <div class="container mt-5">
+
+    <h3>Métricas de Proveedores</h3>
+    <div class="row">
+      <div class="col-md-3">
+
+        <!-- Gráfico de torta -->
+        <canvas #pieChart></canvas>
+      </div>
+      <div class="col-md-3">
+        <p><strong>Total Proveedores:</strong> {{ providerList.length }}</p>
+        <p><strong>Proveedores Activos:</strong> {{ activeCount }}</p>
+        <p><strong>Proveedores Inactivos:</strong> {{ inactiveCount }}</p>
+      </div>
+      <div class="col-md-6">
+
+        <!-- Canvas para el gráfico de barras -->
+        <h5>Proveedores por Tipo de Servicio</h5>
+        <canvas id="barChart"></canvas>
+
+      </div>
+    </div>
+  </div>
+
+</app-main-container>
